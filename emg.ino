@@ -1,3 +1,26 @@
+/*
+ * Two-Channel EMG Signal Processing
+ * ----------------------------------
+ * Reads two EMG channels (A0, A1) at a fixed 500Hz sample rate using
+ * a micros()-based timing loop for precise, jitter-free sampling.
+ *
+ * Per channel:
+ *   1. 4th-order Butterworth bandpass filter (cascaded biquad stages)
+ *      removes baseline drift and high-frequency noise.
+ *   2. Signal is rectified (absolute value).
+ *   3. A Kalman filter smooths the rectified signal to extract the
+ *      muscle activation envelope, while also tracking estimation
+ *      uncertainty (p).
+ *
+ * The two channel envelopes are then combined via confidence-weighted
+ * fusion: each channel's contribution is weighted by the inverse of
+ * its Kalman uncertainty, so the more "confident" channel dominates
+ * the fused output.
+ *
+ * Output (Serial, 115200 baud, CSV):
+ *   filtered_ch1, filtered_ch2, fused_envelope
+ */
+
 #define Fs 500
 #define inpin1 A0
 #define inpin2 A1
