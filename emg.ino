@@ -21,149 +21,141 @@
  *   filtered_ch1, filtered_ch2, fused_envelope
  */
 
+#include <Servo.h>
+
 #define Fs 500
+#define SAMPLE_PERIOD_US (1000000 / Fs)
 #define inpin1 A0
 #define inpin2 A1
 
-              class kalman{
-                private: 
-                  float x;
-                  float p;
-                  float q;
-                  float r;
-                  float k;
+Servo finger;
 
-                  public:
-                  kalman(float process_noise, float measurement_noise);
-                  float update(float measurement);
-                  void tune_r(float newr);
-                  float getUncertainty() { 
-                    return p; 
-                    }
-              };
+int pos = 0;
 
-
-              kalman::kalman(float process_noise, float measurement_noise){
-                  q=process_noise;
-                  r=measurement_noise;
-                  x=0.0;
-                  p=1.0;
-
-              }
-
-              float kalman::update(float measurement){
-                p=p+q;
-                k=p/(p+r);
-                x=x+k*(measurement-x);
-                p=(1.0-k)*p;
-                return x;
-              }
-
-              void kalman::tune_r(float newr){
-                r=newr;
-              }
-
-class butterworth_filter{
- private:
-  float z1_st1,z2_st1;
-  float z1_st2,z2_st2;
-  float z1_st3,z2_st3;
-  float z1_st4,z2_st4;
+class kalman {
+  private: 
+    float x;
+    float p;
+    float q;
+    float r;
+    float k;
 
   public:
-  butterworth_filter();
-  float filter(float sensor_value);
-  
+    kalman(float process_noise, float measurement_noise);
+    float update(float measurement);
+    void tune_r(float newr);
+    float getUncertainty() { return p; }
+};
+
+kalman::kalman(float process_noise, float measurement_noise){
+    q = process_noise;
+    r = measurement_noise;
+    x = 0.0;
+    p = 1.0;
+}
+
+float kalman::update(float measurement){
+    p = p + q;
+    k = p / (p + r);
+    x = x + k * (measurement - x);
+    p = (1.0 - k) * p;
+    return x;
+}
+
+void kalman::tune_r(float newr){
+    r = newr;
+}
+
+class butterworth_filter {
+  private:
+    float z1_st1, z2_st1;
+    float z1_st2, z2_st2;
+    float z1_st3, z2_st3;
+    float z1_st4, z2_st4;
+
+  public:
+    butterworth_filter();
+    float filter(float sensor_value);
 };
 
 butterworth_filter::butterworth_filter(){
-      z1_st1 = z2_st1 = z1_st2 = z2_st2 = 0.0;
-      z1_st3 = z2_st3 = z1_st4 = z2_st4 = 0.0;
+    z1_st1 = z2_st1 = z1_st2 = z2_st2 = 0.0;
+    z1_st3 = z2_st3 = z1_st4 = z2_st4 = 0.0;
 }
 
 float butterworth_filter::filter(float sensor_value){
-  float output = sensor_value;
-      float x;
+    float output = sensor_value;
+    float x;
 
-      // Stage 1
-      x = output - 0.05159732 * z1_st1 - 0.36347401 * z2_st1;
-      output = 0.01856301 * x + 0.03712602 * z1_st1 + 0.01856301 * z2_st1;
-      z2_st1 = z1_st1; z1_st1 = x;
+    // Stage 1
+    x = output - 0.05159732 * z1_st1 - 0.36347401 * z2_st1;
+    output = 0.01856301 * x + 0.03712602 * z1_st1 + 0.01856301 * z2_st1;
+    z2_st1 = z1_st1; z1_st1 = x;
 
-      // Stage 2
-      x = output - -0.53945795 * z1_st2 - 0.39764934 * z2_st2;
-      output = 1.00000000 * x + -2.00000000 * z1_st2 + 1.00000000 * z2_st2;
-      z2_st2 = z1_st2; z1_st2 = x;
+    // Stage 2
+    x = output - -0.53945795 * z1_st2 - 0.39764934 * z2_st2;
+    output = 1.00000000 * x + -2.00000000 * z1_st2 + 1.00000000 * z2_st2;
+    z2_st2 = z1_st2; z1_st2 = x;
 
-      // Stage 3
-      x = output - 0.47319594 * z1_st3 - 0.70744137 * z2_st3;
-      output = 1.00000000 * x + 2.00000000 * z1_st3 + 1.00000000 * z2_st3;
-      z2_st3 = z1_st3; z1_st3 = x;
+    // Stage 3
+    x = output - 0.47319594 * z1_st3 - 0.70744137 * z2_st3;
+    output = 1.00000000 * x + 2.00000000 * z1_st3 + 1.00000000 * z2_st3;
+    z2_st3 = z1_st3; z1_st3 = x;
 
-      // Stage 4
-      x = output - -1.00211112 * z1_st4 - 0.74520226 * z2_st4;
-      output = 1.00000000 * x + -2.00000000 * z1_st4 + 1.00000000 * z2_st4;
-      z2_st4 = z1_st4; z1_st4 = x;
+    // Stage 4
+    x = output - -1.00211112 * z1_st4 - 0.74520226 * z2_st4;
+    output = 1.00000000 * x + -2.00000000 * z1_st4 + 1.00000000 * z2_st4;
+    z2_st4 = z1_st4; z1_st4 = x;
 
-      return output;
+    return output;
 }
 
-
-
-
-kalman sensor1(0.5,0.02);//q and r
-kalman sensor2(0.5,0.02);
+kalman sensor1(0.5, 0.02);
+kalman sensor2(0.5, 0.02);
 
 butterworth_filter s1;
 butterworth_filter s2;
 
-
-
-
-
 void setup() {
   Serial.begin(115200);
-
+  finger.attach(9);
 }
 
 void loop() {
-
   static unsigned long past = 0;
   unsigned long present = micros();
-  unsigned long interval = present-past;
-  
-  static signed long timer = 0;
-  timer = timer - interval; 
 
-    if(timer<0)
-    {
-      timer +=1000000/Fs;
-      
-      float sensor1_value=analogRead(inpin1);
-      float sensor2_value=analogRead(inpin2);
-      
-      float filtered_value1=s1.filter(sensor1_value);
-      float filtered_value2=s2.filter(sensor2_value);
+  if (present - past >= SAMPLE_PERIOD_US) {
+    past = present;
 
-      float x1=sensor1.update(abs(filtered_value1));
-      float x2=sensor2.update(abs(filtered_value2));
+    float sensor1_value = analogRead(inpin1);
+    float sensor2_value = analogRead(inpin2);
+    
+    float filtered_value1 = s1.filter(sensor1_value);
+    float filtered_value2 = s2.filter(sensor2_value);
 
-      float p1 = sensor1.getUncertainty();
+    float x1 = sensor1.update(abs(filtered_value1));
+    float x2 = sensor2.update(abs(filtered_value2));
 
-      float p2 = sensor2.getUncertainty();
-      
-      float wave=(x1 * p2 + x2 * p1) / (p1 + p2);
-      
-      Serial.print(filtered_value1);
+    float p1 = sensor1.getUncertainty();
+    float p2 = sensor2.getUncertainty();
+    
+    // Joint variance weighting
+    float wave = (x1 * p2 + x2 * p1) / (p1 + p2);
+    
+    
+    Serial.print(abs(filtered_value1));
+    Serial.print(",");
+    Serial.print(abs(filtered_value2));
+    Serial.print(",");
+    Serial.println(wave);
 
-      Serial.print(",");
 
-      Serial.print(filtered_value2);
-
-      Serial.print(",");
-
-      Serial.println(wave);
-    }
-
+    if (wave > 10.0)
+    finger.write(180);
+    else 
+      finger.write(0);
+  }
+}
 }
 
