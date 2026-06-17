@@ -1,0 +1,17 @@
+# STM32CubeIDE build outputs
+Debug/
+Release/
+*.bin
+*.elf
+*.o
+*.d
+*.map
+*.launch
+
+# CCS build outputs
+*.obj
+*.out
+
+# OS junk
+Thumbs.db
+.DS_Store
